@@ -54,7 +54,7 @@ The one exception is `--export-translations`, which reads no Backlog data and th
   "mcpServers": {
     "backlog": {
       "command": "npx",
-      "args": ["-y", "backlog-mcp-server"],
+      "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-space.backlog.com",
         "BACKLOG_API_KEY": "your-api-key",

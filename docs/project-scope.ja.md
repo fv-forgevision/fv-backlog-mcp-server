@@ -56,7 +56,7 @@ Set BACKLOG_ALLOWED_PROJECTS="PROJ1,PROJ2" or pass --allowed-projects PROJ1,PROJ
   "mcpServers": {
     "backlog": {
       "command": "npx",
-      "args": ["-y", "backlog-mcp-server"],
+      "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-space.backlog.jp",
         "BACKLOG_API_KEY": "your-api-key",
