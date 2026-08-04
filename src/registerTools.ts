@@ -1,5 +1,7 @@
 import { backlogErrorHandler } from './backlog/backlogErrorHandler.js';
 import { composeToolHandler } from './handlers/builders/composeToolHandler.js';
+import type { ProjectResolver } from './scope/projectResolver.js';
+import { isBlocked } from './scope/toolScopePolicy.js';
 import { MCPOptions } from './types/mcp.js';
 import { DynamicToolDefinition, ToolDefinition } from './types/tool.js';
 import { DynamicToolsetGroup, ToolsetGroup } from './types/toolsets.js';
@@ -25,19 +27,42 @@ type RegisterOptions = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handler: (...args: any[]) => any;
   };
+  /** Registration filter; a tool it rejects is never exposed to the client. */
+  shouldRegister?: (toolName: string) => boolean;
+  describeTool?: (description: string) => string;
 };
+
+/**
+ * Tells the model what the server can reach, so it stops proposing work in
+ * projects that would only be refused.
+ */
+function scopeNotice(resolver: ProjectResolver): string {
+  return (
+    `Project scope: this server is restricted to the Backlog project(s) ${resolver.keys.join(', ')}. ` +
+    `Requests referencing any other project are refused.`
+  );
+}
 
 export function registerTools(
   server: BacklogMCPServer,
   toolsetGroup: ToolsetGroup,
   options: MCPOptions
 ) {
-  const { useFields, maxTokens, prefix, useOrganization } = options;
+  const { useFields, maxTokens, prefix, useOrganization, projectResolver } =
+    options;
 
   registerToolsets({
     server,
     toolsetGroup,
     prefix,
+    // Deny by default: a tool the scope policy doesn't classify — including one
+    // added upstream after this fork — is not registered at all.
+    shouldRegister: projectResolver
+      ? (toolName) => !isBlocked(toolName)
+      : undefined,
+    describeTool: projectResolver
+      ? (description) => `${description}\n\n${scopeNotice(projectResolver)}`
+      : undefined,
     prepareTool: (tool) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       composeToolHandler(tool as ToolDefinition<any, any>, {
@@ -45,6 +70,7 @@ export function registerTools(
         errorHandler: backlogErrorHandler,
         maxTokens,
         useOrganization,
+        projectResolver,
       }),
   });
 }
@@ -67,6 +93,8 @@ function registerToolsets({
   toolsetGroup,
   prefix,
   prepareTool,
+  shouldRegister,
+  describeTool,
 }: RegisterOptions) {
   for (const toolset of toolsetGroup.toolsets) {
     if (!toolset.enabled) {
@@ -74,15 +102,17 @@ function registerToolsets({
     }
 
     for (const tool of toolset.tools) {
+      if (shouldRegister && !shouldRegister(tool.name)) {
+        continue;
+      }
+
       const toolNameWithPrefix = `${prefix}${tool.name}`;
       const { schema, handler } = prepareTool(tool);
+      const description = describeTool
+        ? describeTool(tool.description)
+        : tool.description;
 
-      server.registerOnce(
-        toolNameWithPrefix,
-        tool.description,
-        schema,
-        handler
-      );
+      server.registerOnce(toolNameWithPrefix, description, schema, handler);
     }
   }
 }

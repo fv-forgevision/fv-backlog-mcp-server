@@ -1,3 +1,5 @@
+import { ProjectScopeError } from '../scope/projectScope.js';
+
 /**
  * Converts a BacklogError (or unknown error) into Output format for MCP response
  */
@@ -18,6 +20,7 @@ export type ParsedBacklogAPIError = {
   type:
     | 'BacklogAuthError'
     | 'BacklogApiError'
+    | 'ProjectScopeError'
     | 'UnexpectedError'
     | 'UnknownError';
   message: string;
@@ -28,6 +31,12 @@ export type ParsedBacklogAPIError = {
 
 export function parseBacklogAPIError(err: unknown): ParsedBacklogAPIError {
   const e = err as MaybeBacklogErrorObject;
+
+  // Refused locally by the project scope guard — never reached Backlog. The
+  // message already explains what is allowed, so it is passed through as-is.
+  if (err instanceof ProjectScopeError) {
+    return { type: 'ProjectScopeError', message: err.message };
+  }
 
   if (e._name && e._status && e._url) {
     const status = e._status;

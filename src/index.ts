@@ -12,6 +12,9 @@ import { createTranslationHelper } from './createTranslationHelper.js';
 import { loadTranslationOverrides } from './loadTranslationOverrides.js';
 import { createBacklogMcpServer } from './createBacklogMcpServer.js';
 import { runHttpMcpServer } from './httpMcpServer.js';
+import { createProjectResolver } from './scope/projectResolver.js';
+import { createProjectScope } from './scope/projectScope.js';
+import { blockedToolNames } from './scope/toolScopePolicy.js';
 import {
   createBacklogClientRegistry,
   createOAuthBacklogClientRegistry,
@@ -128,6 +131,15 @@ Available toolsets:
   - notifications: Tools for managing user notifications`,
     default: env.get('ENABLE_TOOLSETS').default('all').asArray(','),
   })
+  .option('allowed-projects', {
+    type: 'string',
+    describe: `Comma-separated Backlog project keys this server may touch (e.g. "PBL,INFRA").
+When set, every tool is confined to those projects: project arguments are validated,
+unfiltered listings default to the allow-list, and space-wide tools
+(notifications, watching, space activity, user and project administration)
+are not registered at all. Leave empty for upstream behaviour: the whole space.`,
+    default: env.get('BACKLOG_ALLOWED_PROJECTS').default('').asString(),
+  })
   .option('dynamic-toolsets', {
     type: 'boolean',
     describe:
@@ -158,11 +170,32 @@ const enabledToolsets = argv.dynamicToolsets
   ? (argv.enableToolsets as string[]).filter((a) => a !== 'all')
   : (argv.enableToolsets as string[]);
 
+const projectScope = createProjectScope(argv.allowedProjects);
+const projectResolver = projectScope
+  ? createProjectResolver(backlog, projectScope)
+  : undefined;
+
+if (projectResolver) {
+  logger.info(
+    {
+      allowedProjects: projectResolver.keys,
+      blockedTools: blockedToolNames(),
+    },
+    'Project scope enabled: tools are confined to the allowed projects'
+  );
+} else {
+  logger.warn(
+    'No project scope configured (--allowed-projects / BACKLOG_ALLOWED_PROJECTS). ' +
+      'Tools can reach every project the credential can see.'
+  );
+}
+
 const mcpOption = {
   useFields: useFields,
   maxTokens,
   prefix,
   useOrganization: clientRegistry.isMultiOrganization,
+  projectResolver,
 };
 
 // Built once and shared by every server the factory produces. `enable_toolset`

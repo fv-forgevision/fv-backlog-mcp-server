@@ -8,11 +8,17 @@ import { z } from 'zod';
 import { generateFieldsDescription } from '../../utils/generateFieldsDescription.js';
 import { ErrorLike, SafeResult } from '../../types/result.js';
 import { ToolDefinition } from '../../types/tool.js';
+import type { ProjectResolver } from '../../scope/projectResolver.js';
+import { wrapWithProjectScope } from '../../scope/wrapWithProjectScope.js';
 
 export interface ComposeOptions {
   useFields: boolean;
   errorHandler?: (err: unknown) => ErrorLike;
   maxTokens: number;
+  /**
+   * When set, every tool is confined to the resolver's allowed projects.
+   */
+  projectResolver?: ProjectResolver;
   /**
    * Whether to advertise `organization`. Defaults to false: with a single
    * Backlog space the parameter has exactly one legal value, and repeating it
@@ -45,6 +51,7 @@ export function composeToolHandler(
     errorHandler,
     maxTokens,
     useOrganization = false,
+    projectResolver,
   } = options;
 
   // Step 1: Add `fields` to schema if needed
@@ -57,9 +64,15 @@ export function composeToolHandler(
     : undefined;
   const schema = extendSchema(tool.schema, fieldDesc, useOrganization);
 
-  // Step 2: Compose
+  // Step 2: Compose. The scope guard sits inside the organization context, so
+  // resolving an entity's project goes through the right Backlog client, and
+  // below every tool, so no tool can opt out of it.
+  const scopedHandler = projectResolver
+    ? wrapWithProjectScope(tool.name, tool.handler, projectResolver)
+    : tool.handler;
+
   const baseHandler: ComposedHandler = wrapWithErrorHandling(
-    wrapWithOrganizationContext(tool.handler),
+    wrapWithOrganizationContext(scopedHandler),
     errorHandler
   );
 
