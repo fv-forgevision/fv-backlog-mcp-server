@@ -1,6 +1,6 @@
 {
   "name": "@fyosimi/fv-backlog-mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Backlog MCP server confined to an explicit allow-list of projects. Fork of nulab/backlog-mcp-server.",
   "type": "module",
   "bin": {
