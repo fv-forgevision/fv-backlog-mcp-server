@@ -1,9 +1,10 @@
 {
-  "name": "backlog-mcp-server",
-  "version": "0.15.1",
+  "name": "@fyosimi/fv-backlog-mcp-server",
+  "version": "0.1.0",
+  "description": "Backlog MCP server confined to an explicit allow-list of projects. Fork of nulab/backlog-mcp-server.",
   "type": "module",
   "bin": {
-    "backlog-mcp-server": "./build/index.js"
+    "fv-backlog-mcp-server": "./build/index.js"
   },
   "main": "./build/lib.js",
   "types": "./build/lib.d.ts",
@@ -26,9 +27,23 @@
     }
   },
   "license": "MIT",
+  "author": "fyosimi",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nulab/backlog-mcp-server.git"
+    "url": "git+https://github.com/fv-forgevision/fv-backlog-mcp-server.git"
+  },
+  "homepage": "https://github.com/fv-forgevision/fv-backlog-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/fv-forgevision/fv-backlog-mcp-server/issues"
+  },
+  "keywords": [
+    "backlog",
+    "mcp",
+    "model-context-protocol",
+    "project-management"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "preinstall": "npx only-allow pnpm",

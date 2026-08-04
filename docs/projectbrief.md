@@ -25,7 +25,7 @@
 
 2. Internationalization
    - Descriptions are defined in a translatable format
-   - Descriptions can be customized via the `.backlog-mcp-serverrc.json` file
+   - Descriptions can be customized via the `.@fyosimi/fv-backlog-mcp-serverrc.json` file
 
 3. Testing
    - Create test files corresponding to each tool
@@ -40,7 +40,7 @@
 ## Deployment Method
 
 - Provided as a Docker container, published to GitHub Container Registry (ghcr.io)
-- Also runnable directly via `npx backlog-mcp-server` or `node build/index.js`
+- Also runnable directly via `npx @fyosimi/fv-backlog-mcp-server` or `node build/index.js`
 - Configuration injected via environment variables and CLI flags
 
 ## Usage

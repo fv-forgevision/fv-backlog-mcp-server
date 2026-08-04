@@ -1,13 +1,16 @@
-# Backlog MCP Server
+# FV Backlog MCP Server
 
-[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fnulab%2Fbacklog-mcp-server.svg)](https://mcptoplist.com/server/glama%2Fnulab%2Fbacklog-mcp-server)
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
-![Build](https://github.com/nulab/backlog-mcp-server/actions/workflows/ci.yml/badge.svg)
-![Last Commit](https://img.shields.io/github/last-commit/nulab/backlog-mcp-server.svg)
+![Build](https://github.com/fv-forgevision/fv-backlog-mcp-server/actions/workflows/ci.yml/badge.svg)
+![Last Commit](https://img.shields.io/github/last-commit/fv-forgevision/fv-backlog-mcp-server.svg)
 
 [📘 日本語でのご利用ガイド](./README.ja.md)
 
 A Model Context Protocol (MCP) server for interacting with the Backlog API. This server provides tools for managing projects, issues, wiki pages, and more in Backlog through AI agents like Claude Desktop / Cline / Cursor etc.
+
+> **This is a fork of [nulab/backlog-mcp-server](https://github.com/nulab/backlog-mcp-server)** (based on upstream v0.15.1), published as [`@fyosimi/fv-backlog-mcp-server`](https://www.npmjs.com/package/@fyosimi/fv-backlog-mcp-server).
+>
+> It adds one thing: **[project scoping](#project-scope-fork-addition)** — the ability to confine every tool to an explicit allow-list of Backlog projects, so an agent cannot work across project boundaries. Everything else is upstream's, under the MIT license. Bug reports about the scoping belong here; anything else is likely better filed upstream.
 
 ## Features
 
@@ -51,7 +54,7 @@ The easiest way to use this MCP server is through MCP configurations:
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -67,7 +70,7 @@ Replace `your-domain.backlog.com` with your Backlog domain and `your-api-key` wi
 ✅ If you cannot use --pull always, you can manually update the image using:
 
 ```
-docker pull ghcr.io/nulab/backlog-mcp-server:latest
+docker pull ghcr.io/fv-forgevision/fv-backlog-mcp-server:latest
 ```
 
 ### Option 2: Install via npx
@@ -83,7 +86,7 @@ You can also run the server directly using `npx` without cloning the repository.
   "mcpServers": {
     "backlog": {
       "command": "npx",
-      "args": ["backlog-mcp-server"],
+      "args": ["@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key"
@@ -100,8 +103,8 @@ Replace `your-domain.backlog.com` with your Backlog domain and `your-api-key` wi
 1. Clone and install:
 
    ```bash
-   git clone https://github.com/nulab/backlog-mcp-server.git
-   cd backlog-mcp-server
+   git clone https://github.com/fv-forgevision/fv-backlog-mcp-server.git
+   cd fv-backlog-mcp-server
    pnpm install
    pnpm run build
    ```
@@ -219,6 +222,37 @@ MCP clients that support the MCP authorization specification will use these endp
 >
 > - OAuth mode currently supports a single Backlog organization. It is not compatible with the multi-organization configuration.
 > - Client registrations and tokens are stored in memory and will be lost on server restart.
+
+## Project Scope (fork addition)
+
+Set `BACKLOG_ALLOWED_PROJECTS` (or `--allowed-projects`) to a comma-separated list of project keys and **every tool is confined to those projects**. Leave it unset for upstream behaviour: the whole space.
+
+```json
+{
+  "mcpServers": {
+    "backlog": {
+      "command": "npx",
+      "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
+      "env": {
+        "BACKLOG_DOMAIN": "your-space.backlog.com",
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
+      }
+    }
+  }
+}
+```
+
+When a scope is set:
+
+- Tools taking a project argument refuse anything outside the allow-list, before the call reaches Backlog.
+- Tools whose project filter is optional (`get_issues`, `count_issues`, `get_documents`) get the allow-list injected, so an unfiltered call can no longer sweep the whole space.
+- Tools addressed by issue, wiki, or document id (`get_issue`, `update_wiki`, `get_document`, …) resolve the owning project first and then check it. Issue keys such as `PBL-123` are decided from the prefix alone, without an API call.
+- 18 tools that cannot be narrowed to a project — notifications, watching, space activity, user listing, and project administration — are not registered at all (62 → 44 tools).
+
+> **Important:** this is a guard against accidental cross-project work, not a security boundary. The credential itself still carries space-wide permissions. For a real boundary, issue the API key from an account that only belongs to the intended projects, and treat this layer as defense in depth.
+
+See [docs/project-scope.md](docs/project-scope.md) for the full behaviour, the list of unregistered tools, and the implementation layout.
 
 ## Tool Configuration
 
@@ -420,7 +454,7 @@ Show me all items I'm watching
 
 ### i18n / Overriding Descriptions
 
-You can override the descriptions of tools by creating a `.backlog-mcp-serverrc.json` file in your **home directory**.
+You can override the descriptions of tools by creating a `.@fyosimi/fv-backlog-mcp-serverrc.json` file in your **home directory**.
 
 The file should contain a JSON object with the tool names as keys and the new descriptions as values.  
 For example:
@@ -435,7 +469,7 @@ For example:
 When the server starts, it determines the final description for each tool based on the following priority:
 
 1. Environment variables (e.g., `BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION`)
-2. Entries in `.backlog-mcp-serverrc.json` - Supported configuration file formats: .json, .yaml, .yml
+2. Entries in `.@fyosimi/fv-backlog-mcp-serverrc.json` - Supported configuration file formats: .json, .yaml, .yml
 3. Built-in fallback values (English)
 
 Sample config:
@@ -454,8 +488,8 @@ Sample config:
         "-e",
         "BACKLOG_API_KEY",
         "-v",
-        "/yourcurrentdir/.backlog-mcp-serverrc.json:/root/.backlog-mcp-serverrc.json:ro",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "/yourcurrentdir/.@fyosimi/fv-backlog-mcp-serverrc.json:/root/.@fyosimi/fv-backlog-mcp-serverrc.json:ro",
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -475,13 +509,13 @@ This will print all tool descriptions to stdout, including any customizations yo
 Example:
 
 ```bash
-docker run -i --rm ghcr.io/nulab/backlog-mcp-server node build/index.js --export-translations
+docker run -i --rm ghcr.io/fv-forgevision/fv-backlog-mcp-server node build/index.js --export-translations
 ```
 
 or
 
 ```bash
-npx github:nulab/backlog-mcp-server --export-translations
+npx github:fv-forgevision/fv-backlog-mcp-server --export-translations
 ```
 
 ### Using Environment Variables
@@ -505,7 +539,7 @@ To override the TOOL_ADD_ISSUE_COMMENT_DESCRIPTION:
         "-e", "BACKLOG_DOMAIN",
         "-e", "BACKLOG_API_KEY",
         "-e", "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION"
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -614,7 +648,7 @@ This section demonstrates advanced configuration using multiple environment vari
         "PREFIX",
         "-e",
         "ENABLE_TOOLSETS",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -643,7 +677,12 @@ pnpm test
 1. Create a new file in `src/tools/` following the pattern of existing tools
 2. Create a corresponding test file
 3. Add the new tool to `src/tools/tools.ts`
-4. Build and test your changes
+4. **Add a scope rule in `src/scope/toolScopePolicy.ts`** — unclassified tools are blocked by default
+5. Build and test your changes
+
+### Releasing and Publishing
+
+See [docs/publishing.ja.md](docs/publishing.ja.md) (Japanese) for how this fork is published to npm as `@fyosimi/fv-backlog-mcp-server` and to GHCR, and for how to merge upstream changes.
 
 ### Command Line Options
 
@@ -661,11 +700,12 @@ The server supports several command line options:
 - `--enable-toolsets <toolsets...>`: Specify which toolsets to enable (comma-separated or multiple arguments). Defaults to "all".
   Example: `--enable-toolsets space,project` or `--enable-toolsets issue --enable-toolsets git`
   Available toolsets: `space`, `project`, `issue`, `wiki`, `git`, `notifications`.
+- `--allowed-projects=KEYS`: Comma-separated project keys this server may touch (e.g. `PBL,INFRA`). Case-insensitive. Confines every tool to those projects and drops the tools that cannot be narrowed to one. Unset means no restriction. See [Project Scope](#project-scope-fork-addition).
 
 Example:
 
 ```bash
-node build/index.js --optimize-response --max-tokens=100000 --prefix="backlog_" --enable-toolsets space,issue
+node build/index.js --optimize-response --max-tokens=100000 --prefix="backlog_" --enable-toolsets space,issue --allowed-projects PBL,INFRA
 ```
 
 HTTP example:

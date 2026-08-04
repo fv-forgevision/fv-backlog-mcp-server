@@ -1,12 +1,16 @@
-# Backlog MCP Server（日本語版）
+# FV Backlog MCP Server（日本語版）
 
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
-![Build](https://github.com/nulab/backlog-mcp-server/actions/workflows/ci.yml/badge.svg)
-![Last Commit](https://img.shields.io/github/last-commit/nulab/backlog-mcp-server.svg)
+![Build](https://github.com/fv-forgevision/fv-backlog-mcp-server/actions/workflows/ci.yml/badge.svg)
+![Last Commit](https://img.shields.io/github/last-commit/fv-forgevision/fv-backlog-mcp-server.svg)
 
 [🇬🇧 English README](./README.md)
 
 Backlog API とやり取りするための Model Context Protocol（MCP）サーバーです。このサーバーは、Claude Desktop / Cline / Cursor などのAIエージェントを通じて、Backlog 上でプロジェクト、課題、Wikiページなどを管理するためのツールを提供します。
+
+> **本リポジトリは [nulab/backlog-mcp-server](https://github.com/nulab/backlog-mcp-server) のフォーク**（上流 v0.15.1 ベース）で、[`@fyosimi/fv-backlog-mcp-server`](https://www.npmjs.com/package/@fyosimi/fv-backlog-mcp-server) として公開しています。
+>
+> 追加している機能は1点、**[プロジェクトスコープ制限](#プロジェクトスコープ制限このフォークの追加機能)** です。全ツールを指定した Backlog プロジェクトの範囲に限定し、エージェントがプロジェクトをまたいで作業できないようにします。それ以外はすべて上流のもので、MIT ライセンスに従います。スコープ制限に関する不具合は本リポジトリへ、それ以外は上流へ報告するのが適切です。
 
 ## 主な機能
 
@@ -50,7 +54,7 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -66,7 +70,7 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
 ✅ `--pull always` を使用できない場合は、次のコマンドで手動でイメージを更新できます：
 
 ```
-docker pull ghcr.io/nulab/backlog-mcp-server:latest
+docker pull ghcr.io/fv-forgevision/fv-backlog-mcp-server:latest
 ```
 
 ### オプション2: npx経由でのインストール
@@ -82,7 +86,7 @@ docker pull ghcr.io/nulab/backlog-mcp-server:latest
   "mcpServers": {
     "backlog": {
       "command": "npx",
-      "args": ["backlog-mcp-server"],
+      "args": ["@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key"
@@ -99,8 +103,8 @@ docker pull ghcr.io/nulab/backlog-mcp-server:latest
 1. クローンしてインストール：
 
    ```bash
-   git clone https://github.com/nulab/backlog-mcp-server.git
-   cd backlog-mcp-server
+   git clone https://github.com/fv-forgevision/fv-backlog-mcp-server.git
+   cd fv-backlog-mcp-server
    pnpm install
    pnpm run build
    ```
@@ -193,6 +197,37 @@ MCP認可仕様に対応するMCPクライアントは、これらのエンド�
 > - OAuthモードは現在、単一のBacklog組織のみをサポートしています。複数組織設定との併用はできません。
 > - クライアント登録やトークンはメモリ内に保持されるため、サーバー再起動時に失われます。
 
+## プロジェクトスコープ制限（このフォークの追加機能）
+
+`BACKLOG_ALLOWED_PROJECTS` 環境変数（または `--allowed-projects`）にプロジェクトキーをカンマ区切りで指定すると、**すべてのツールが指定したプロジェクトの範囲内に限定**されます。指定しない場合は上流と同じ無制限動作です。
+
+```json
+{
+  "mcpServers": {
+    "backlog": {
+      "command": "npx",
+      "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
+      "env": {
+        "BACKLOG_DOMAIN": "your-space.backlog.jp",
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
+      }
+    }
+  }
+}
+```
+
+有効時の挙動:
+
+- プロジェクトを引数に取るツールは、許可リスト外の指定を実行前に拒否します
+- `get_issues` などのプロジェクト指定が省略可能なツールには、許可プロジェクトを自動的に注入します（無指定でスペース全体を舐めることを防ぎます）
+- `get_issue` のように課題ID/WikiIDで間接指定するツールは、所属プロジェクトを解決してから検証します
+- 通知・ウォッチ・スペース活動・ユーザー一覧・プロジェクト管理など、プロジェクト単位に絞り込めない18個のツールは登録されません（62 → 44 ツール）
+
+> **重要:** これはエージェントの誤操作を防ぐガードであり、セキュリティ境界ではありません。認証情報の権限自体はスペース全体に及びます。技術的な境界が必要な場合は、対象プロジェクトにのみ参加しているアカウントのAPIキーを使用してください。
+
+詳細は [docs/project-scope.ja.md](docs/project-scope.ja.md) を参照してください。
+
 ## ツール設定
 
 `--enable-toolsets` コマンドラインフラグまたは `ENABLE_TOOLSETS` 環境変数を使用して、特定の **ツールセット** を選択的に有効または無効にすることができます。これにより、AIエージェントが利用できるツールをより細かく制御し、コンテキストサイズを削減するのに役立ちます。
@@ -257,7 +292,7 @@ CLI経由での有効化：
 
 以下のような Backlog 機能に対応するツールを提供しています：
 
-[Available Tools セクションへ](https://github.com/nulab/backlog-mcp-server?tab=readme-ov-file#available-tools)
+[Available Tools セクションへ](https://github.com/fv-forgevision/fv-backlog-mcp-server?tab=readme-ov-file#available-tools)
 
 ## 使用例
 
@@ -305,7 +340,7 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
 
 ### i18n / 説明のオーバーライド
 
-**ホームディレクトリ** に `.backlog-mcp-serverrc.json` ファイルを作成することで、ツールの説明をオーバーライドできます。
+**ホームディレクトリ** に `.@fyosimi/fv-backlog-mcp-serverrc.json` ファイルを作成することで、ツールの説明をオーバーライドできます。
 
 ファイルには、ツール名をキーとし、新しい説明を値とするJSONオブジェクトを含める必要があります。
 例：
@@ -320,7 +355,7 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
 サーバー起動時、各ツールの最終的な説明は次の優先順位に基づいて決定されます：
 
 1. 環境変数（例：`BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION`）
-2. `.backlog-mcp-serverrc.json` 内のエントリ - サポートされる設定ファイル形式：.json、.yaml、.yml
+2. `.@fyosimi/fv-backlog-mcp-serverrc.json` 内のエントリ - サポートされる設定ファイル形式：.json、.yaml、.yml
 3. 組み込みのフォールバック値（英語）
 
 サンプル設定：
@@ -339,8 +374,8 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
         "-e",
         "BACKLOG_API_KEY",
         "-v",
-        "/yourcurrentdir/.backlog-mcp-serverrc.json:/root/.backlog-mcp-serverrc.json:ro",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "/yourcurrentdir/.@fyosimi/fv-backlog-mcp-serverrc.json:/root/.@fyosimi/fv-backlog-mcp-serverrc.json:ro",
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -360,13 +395,13 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
 例：
 
 ```bash
-docker run -i --rm ghcr.io/nulab/backlog-mcp-server node build/index.js --export-translations
+docker run -i --rm ghcr.io/fv-forgevision/fv-backlog-mcp-server node build/index.js --export-translations
 ```
 
 または
 
 ```bash
-npx github:nulab/backlog-mcp-server --export-translations
+npx github:fv-forgevision/fv-backlog-mcp-server --export-translations
 ```
 
 ### 環境変数の使用
@@ -393,7 +428,7 @@ npx github:nulab/backlog-mcp-server --export-translations
         "BACKLOG_API_KEY",
         "-e",
         "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -502,7 +537,7 @@ MAX_TOKENS=10000
         "PREFIX",
         "-e",
         "ENABLE_TOOLSETS",
-        "ghcr.io/nulab/backlog-mcp-server"
+        "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
@@ -531,7 +566,12 @@ pnpm test
 1. 既存のツールのパターンに従って `src/tools/` に新しいファイルを作成します
 2. 対応するテストファイルを作成します
 3. 新しいツールを `src/tools/tools.ts` に追加します
-4. 変更をビルドしてテストします
+4. **`src/scope/toolScopePolicy.ts` にスコープルールを追加します**（未分類のツールは自動的にブロックされます）
+5. 変更をビルドしてテストします
+
+### リリースと公開
+
+npm（`@fyosimi/fv-backlog-mcp-server`）および GHCR への公開手順、上流の変更を取り込む方法は [docs/publishing.ja.md](docs/publishing.ja.md) にまとめています。
 
 ### コマンドラインオプション
 
@@ -544,11 +584,12 @@ pnpm test
 - `--enable-toolsets <toolsets...>`: 有効にするツールセットを指定します（カンマ区切りまたは複数の引数）。デフォルトは "all" です。
   例：`--enable-toolsets space,project` または `--enable-toolsets issue --enable-toolsets git`
   利用可能なツールセット：`space`、`project`、`issue`、`wiki`、`git`、`notifications`。
+- `--allowed-projects=KEYS`: このサーバーが操作できるプロジェクトキーをカンマ区切りで指定します（例：`PBL,INFRA`）。大文字小文字は区別しません。全ツールが指定プロジェクトの範囲に限定され、プロジェクト単位に絞り込めないツールは登録されなくなります。未指定の場合は制限なしです。詳細は[プロジェクトスコープ制限](#プロジェクトスコープ制限このフォークの追加機能)を参照してください。
 
 例：
 
 ```bash
-node build/index.js --optimize-response --max-tokens=100000 --prefix="backlog_" --enable-toolsets space,issue
+node build/index.js --optimize-response --max-tokens=100000 --prefix="backlog_" --enable-toolsets space,issue --allowed-projects PBL,INFRA
 ```
 
 ## 複数組織対応

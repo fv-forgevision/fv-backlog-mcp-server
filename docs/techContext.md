@@ -45,8 +45,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/nulab/backlog-mcp-server.git
-cd backlog-mcp-server
+git clone https://github.com/fv-forgevision/fv-backlog-mcp-server.git
+cd fv-backlog-mcp-server
 
 # Install dependencies
 pnpm install
@@ -133,8 +133,8 @@ graph TD
    docker run -i --rm \
      -e BACKLOG_DOMAIN=your-domain.backlog.com \
      -e BACKLOG_API_KEY=your-api-key \
-     -v /path/to/.backlog-mcp-serverrc.json:/root/.backlog-mcp-serverrc.json:ro \
-     ghcr.io/nulab/backlog-mcp-server
+     -v /path/to/.@fyosimi/fv-backlog-mcp-serverrc.json:/root/.@fyosimi/fv-backlog-mcp-serverrc.json:ro \
+     ghcr.io/fv-forgevision/fv-backlog-mcp-server
    ```
 
 2. **npx**:
@@ -142,7 +142,7 @@ graph TD
    ```bash
    BACKLOG_DOMAIN=your-domain.backlog.com \
    BACKLOG_API_KEY=your-api-key \
-   npx backlog-mcp-server
+   npx @fyosimi/fv-backlog-mcp-server
    ```
 
 3. **Node.js**:
@@ -208,7 +208,7 @@ pnpm test -- -t "getSpace"
 - Multi-language support through translation files
 - Translation overrides through environment variables
 - Translation customization through configuration files
-  (`.backlog-mcp-serverrc.json`; see `translationConfig/` for a Japanese example)
+  (`.@fyosimi/fv-backlog-mcp-serverrc.json`; see `translationConfig/` for a Japanese example)
 - Fallback to default language (English)
 - Translation key tracking for consistency, dumpable via `--export-translations`
 

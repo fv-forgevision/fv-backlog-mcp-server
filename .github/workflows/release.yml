@@ -83,13 +83,16 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --provenance=false --sbom=false \
             --build-arg VERSION="${VERSION}" \
-            -t "ghcr.io/nulab/backlog-mcp-server:v${VERSION}" \
-            -t "ghcr.io/nulab/backlog-mcp-server:latest" \
+            -t "ghcr.io/fv-forgevision/fv-backlog-mcp-server:v${VERSION}" \
+            -t "ghcr.io/fv-forgevision/fv-backlog-mcp-server:latest" \
             --push .
 
       - name: Publish to npm
         env:
           NEW_VERSION: ${{ steps.bump.outputs.new_version }}
+          # Automation token for the npm account owning the @fyosimi scope.
+          # Registered as a repository secret; see docs/publishing.ja.md.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           package_name=$(node -p "require('./package.json').name")
           if npm view "${package_name}@${NEW_VERSION}" version > /dev/null 2>&1; then

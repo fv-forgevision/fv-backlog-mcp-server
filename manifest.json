@@ -1,12 +1,12 @@
 {
   "manifest_version": "0.3",
-  "name": "backlog-mcp-server",
-  "display_name": "Backlog MCP Server",
-  "version": "0.11.1",
-  "description": "MCP server for Nulab Backlog project management service",
+  "name": "fv-backlog-mcp-server",
+  "display_name": "FV Backlog MCP Server (project-scoped)",
+  "version": "0.1.0",
+  "description": "MCP server for Nulab Backlog, confined to an explicit allow-list of projects",
   "author": {
-    "name": "nulab",
-    "url": "https://nulab.com"
+    "name": "fyosimi",
+    "url": "https://github.com/fv-forgevision"
   },
   "server": {
     "type": "node",
@@ -18,7 +18,8 @@
       ],
       "env": {
         "BACKLOG_API_KEY": "${user_config.backlog_api_key}",
-        "BACKLOG_DOMAIN": "${user_config.backlog_domain}"
+        "BACKLOG_DOMAIN": "${user_config.backlog_domain}",
+        "BACKLOG_ALLOWED_PROJECTS": "${user_config.backlog_allowed_projects}"
       }
     }
   },
@@ -37,19 +38,26 @@
       "description": "Your Backlog domain (e.g. your-space.backlog.com)",
       "required": true,
       "sensitive": false
+    },
+    "backlog_allowed_projects": {
+      "type": "string",
+      "title": "Allowed Projects",
+      "description": "Comma-separated project keys this server may touch (e.g. PBL,INFRA). Leave empty to allow the whole space.",
+      "required": false,
+      "sensitive": false
     }
   },
   "keywords": [
     "backlog",
     "project-management",
-    "nulab"
+    "mcp"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nulab/backlog-mcp-server.git"
+    "url": "git+https://github.com/fv-forgevision/fv-backlog-mcp-server.git"
   },
   "icon": "icon.png",
-  "homepage": "https://github.com/nulab/backlog-mcp-server",
-  "support": "https://github.com/nulab/backlog-mcp-server/issues"
+  "homepage": "https://github.com/fv-forgevision/fv-backlog-mcp-server",
+  "support": "https://github.com/fv-forgevision/fv-backlog-mcp-server/issues"
 }
