@@ -133,11 +133,12 @@ Available toolsets:
   })
   .option('allowed-projects', {
     type: 'string',
-    describe: `Comma-separated Backlog project keys this server may touch (e.g. "PBL,INFRA").
-When set, every tool is confined to those projects: project arguments are validated,
+    describe: `REQUIRED. Comma-separated Backlog project keys this server may touch (e.g. "PBL,INFRA").
+Every tool is confined to those projects: project arguments are validated,
 unfiltered listings default to the allow-list, and space-wide tools
 (notifications, watching, space activity, user and project administration)
-are not registered at all. Leave empty for upstream behaviour: the whole space.`,
+are not registered at all. The server refuses to start when this is empty —
+there is no "whole space" mode.`,
     default: env.get('BACKLOG_ALLOWED_PROJECTS').default('').asString(),
   })
   .option('dynamic-toolsets', {
@@ -171,6 +172,25 @@ const enabledToolsets = argv.dynamicToolsets
   : (argv.enableToolsets as string[]);
 
 const projectScope = createProjectScope(argv.allowedProjects);
+
+// An unset allow-list is a configuration error, not "no restriction". This
+// server exists to keep an agent inside named projects, so starting without a
+// list would quietly hand it every project the credential can reach — exactly
+// the failure this fork is meant to prevent. Fail closed instead.
+//
+// `--export-translations` reads no Backlog data, so it stays available.
+if (!projectScope && !argv.exportTranslations) {
+  // Written straight to stderr rather than through the logger: the logger's
+  // destination is async, and process.exit would drop the buffered line.
+  process.stderr.write(
+    'FATAL: no allowed projects configured.\n' +
+      'This server refuses to start without an explicit project allow-list, because an\n' +
+      'unset list would expose every project the credential can reach.\n' +
+      'Set BACKLOG_ALLOWED_PROJECTS="PROJ1,PROJ2" or pass --allowed-projects PROJ1,PROJ2.\n'
+  );
+  process.exit(1);
+}
+
 const projectResolver = projectScope
   ? createProjectResolver(backlog, projectScope)
   : undefined;
@@ -182,11 +202,6 @@ if (projectResolver) {
       blockedTools: blockedToolNames(),
     },
     'Project scope enabled: tools are confined to the allowed projects'
-  );
-} else {
-  logger.warn(
-    'No project scope configured (--allowed-projects / BACKLOG_ALLOWED_PROJECTS). ' +
-      'Tools can reach every project the credential can see.'
   );
 }
 

@@ -22,8 +22,32 @@ English: [project-scope.md](project-scope.md)
 | CLI 引数 | `--allowed-projects "PBL,INFRA"` |
 
 - 大文字小文字は区別しません（内部で大文字に正規化されます）
-- 未設定または空文字の場合、上流と同じ無制限動作になります
+- **必須です。未設定・空文字・区切り文字のみの場合、サーバーは起動を拒否します**（後述）
 - プロジェクトキーであり、プロジェクト名やIDではありません（`PBL-123` の `PBL` の部分）
+
+### 未設定の場合は起動しません（fail-closed）
+
+許可リストが設定されていない場合、サーバーは**エラーメッセージを stderr に出力して終了コード 1 で停止**します。上流のような「無制限モード」は存在しません。
+
+```
+FATAL: no allowed projects configured.
+This server refuses to start without an explicit project allow-list, because an
+unset list would expose every project the credential can reach.
+Set BACKLOG_ALLOWED_PROJECTS="PROJ1,PROJ2" or pass --allowed-projects PROJ1,PROJ2.
+```
+
+設定漏れが「全プロジェクトにアクセスできる状態」として黙って通ってしまうのは、このフォークが防ごうとしている事故そのものだからです。設定漏れは無制限ではなく起動失敗として扱います。
+
+以下はいずれも未設定と同じ扱いになります。
+
+| 指定 | 結果 |
+|---|---|
+| 環境変数なし | 起動拒否 |
+| `BACKLOG_ALLOWED_PROJECTS=` | 起動拒否 |
+| `BACKLOG_ALLOWED_PROJECTS="  "` | 起動拒否 |
+| `BACKLOG_ALLOWED_PROJECTS=" , , "` | 起動拒否 |
+
+例外は `--export-translations` のみです。翻訳キーの出力は Backlog のデータに一切触れないため、許可リストなしでも実行できます。
 
 設定例（Claude Desktop 等）:
 

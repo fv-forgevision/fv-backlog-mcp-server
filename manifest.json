@@ -42,8 +42,8 @@
     "backlog_allowed_projects": {
       "type": "string",
       "title": "Allowed Projects",
-      "description": "Comma-separated project keys this server may touch (e.g. PBL,INFRA). Leave empty to allow the whole space.",
-      "required": false,
+      "description": "Comma-separated project keys this server may touch (e.g. PBL,INFRA). Required: the server will not start without it.",
+      "required": true,
       "sensitive": false
     }
   },

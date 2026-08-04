@@ -54,11 +54,14 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
+        "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -89,7 +92,8 @@ docker pull ghcr.io/fv-forgevision/fv-backlog-mcp-server:latest
       "args": ["@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -136,7 +140,8 @@ pnpm run dev
       "args": ["your-repository-location/build/index.js"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -199,7 +204,9 @@ MCP認可仕様に対応するMCPクライアントは、これらのエンド�
 
 ## プロジェクトスコープ制限（このフォークの追加機能）
 
-`BACKLOG_ALLOWED_PROJECTS` 環境変数（または `--allowed-projects`）にプロジェクトキーをカンマ区切りで指定すると、**すべてのツールが指定したプロジェクトの範囲内に限定**されます。指定しない場合は上流と同じ無制限動作です。
+`BACKLOG_ALLOWED_PROJECTS` 環境変数（または `--allowed-projects`）にプロジェクトキーをカンマ区切りで指定すると、**すべてのツールが指定したプロジェクトの範囲内に限定**されます。
+
+**この設定は必須です。** 未設定・空文字の場合、サーバーは起動を拒否して終了します（終了コード 1）。上流のような「スペース全体を対象にする」モードはありません。設定漏れが「全プロジェクトにアクセスできる状態」として黙って通るのを防ぐためです。
 
 ```json
 {
@@ -373,13 +380,16 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
+        "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
         "-v",
         "/yourcurrentdir/.@fyosimi/fv-backlog-mcp-serverrc.json:/root/.@fyosimi/fv-backlog-mcp-serverrc.json:ro",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -427,12 +437,15 @@ npx github:fv-forgevision/fv-backlog-mcp-server --export-translations
         "-e",
         "BACKLOG_API_KEY",
         "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
+        "-e",
         "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION": "代替の説明文"
       }
     }
@@ -530,6 +543,8 @@ MAX_TOKENS=10000
         "-e",
         "BACKLOG_API_KEY",
         "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
+        "-e",
         "MAX_TOKENS",
         "-e",
         "OPTIMIZE_RESPONSE",
@@ -542,6 +557,7 @@ MAX_TOKENS=10000
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "MAX_TOKENS": "10000",
         "OPTIMIZE_RESPONSE": "1",
         "PREFIX": "backlog_",
@@ -584,7 +600,7 @@ npm（`@fyosimi/fv-backlog-mcp-server`）および GHCR への公開手順、上
 - `--enable-toolsets <toolsets...>`: 有効にするツールセットを指定します（カンマ区切りまたは複数の引数）。デフォルトは "all" です。
   例：`--enable-toolsets space,project` または `--enable-toolsets issue --enable-toolsets git`
   利用可能なツールセット：`space`、`project`、`issue`、`wiki`、`git`、`notifications`。
-- `--allowed-projects=KEYS`: このサーバーが操作できるプロジェクトキーをカンマ区切りで指定します（例：`PBL,INFRA`）。大文字小文字は区別しません。全ツールが指定プロジェクトの範囲に限定され、プロジェクト単位に絞り込めないツールは登録されなくなります。未指定の場合は制限なしです。詳細は[プロジェクトスコープ制限](#プロジェクトスコープ制限このフォークの追加機能)を参照してください。
+- `--allowed-projects=KEYS`: **必須。** このサーバーが操作できるプロジェクトキーをカンマ区切りで指定します（例：`PBL,INFRA`）。大文字小文字は区別しません。全ツールが指定プロジェクトの範囲に限定され、プロジェクト単位に絞り込めないツールは登録されなくなります。未指定の場合はサーバーが起動しません。詳細は[プロジェクトスコープ制限](#プロジェクトスコープ制限このフォークの追加機能)を参照してください。
 
 例：
 

@@ -54,11 +54,14 @@ The easiest way to use this MCP server is through MCP configurations:
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
+        "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -89,7 +92,8 @@ You can also run the server directly using `npx` without cloning the repository.
       "args": ["@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -136,7 +140,8 @@ pnpm run dev
       "args": ["your-repository-location/build/index.js"],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -225,7 +230,9 @@ MCP clients that support the MCP authorization specification will use these endp
 
 ## Project Scope (fork addition)
 
-Set `BACKLOG_ALLOWED_PROJECTS` (or `--allowed-projects`) to a comma-separated list of project keys and **every tool is confined to those projects**. Leave it unset for upstream behaviour: the whole space.
+Set `BACKLOG_ALLOWED_PROJECTS` (or `--allowed-projects`) to a comma-separated list of project keys and **every tool is confined to those projects**.
+
+**This setting is required.** With it unset or empty the server refuses to start and exits with status 1. There is no "whole space" mode — a missing setting silently granting access to every project is the accident this fork exists to prevent.
 
 ```json
 {
@@ -487,13 +494,16 @@ Sample config:
         "BACKLOG_DOMAIN",
         "-e",
         "BACKLOG_API_KEY",
+        "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
         "-v",
         "/yourcurrentdir/.@fyosimi/fv-backlog-mcp-serverrc.json:/root/.@fyosimi/fv-backlog-mcp-serverrc.json:ro",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key"
+        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
   }
@@ -538,12 +548,14 @@ To override the TOOL_ADD_ISSUE_COMMENT_DESCRIPTION:
         "--rm",
         "-e", "BACKLOG_DOMAIN",
         "-e", "BACKLOG_API_KEY",
-        "-e", "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION"
+        "-e", "BACKLOG_ALLOWED_PROJECTS",
+        "-e", "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION",
         "ghcr.io/fv-forgevision/fv-backlog-mcp-server"
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION": "An alternative description"
       }
     }
@@ -641,6 +653,8 @@ This section demonstrates advanced configuration using multiple environment vari
         "-e",
         "BACKLOG_API_KEY",
         "-e",
+        "BACKLOG_ALLOWED_PROJECTS",
+        "-e",
         "MAX_TOKENS",
         "-e",
         "OPTIMIZE_RESPONSE",
@@ -653,6 +667,7 @@ This section demonstrates advanced configuration using multiple environment vari
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
         "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "MAX_TOKENS": "10000",
         "OPTIMIZE_RESPONSE": "1",
         "PREFIX": "backlog_",
@@ -700,7 +715,7 @@ The server supports several command line options:
 - `--enable-toolsets <toolsets...>`: Specify which toolsets to enable (comma-separated or multiple arguments). Defaults to "all".
   Example: `--enable-toolsets space,project` or `--enable-toolsets issue --enable-toolsets git`
   Available toolsets: `space`, `project`, `issue`, `wiki`, `git`, `notifications`.
-- `--allowed-projects=KEYS`: Comma-separated project keys this server may touch (e.g. `PBL,INFRA`). Case-insensitive. Confines every tool to those projects and drops the tools that cannot be narrowed to one. Unset means no restriction. See [Project Scope](#project-scope-fork-addition).
+- `--allowed-projects=KEYS`: **Required.** Comma-separated project keys this server may touch (e.g. `PBL,INFRA`). Case-insensitive. Confines every tool to those projects and drops the tools that cannot be narrowed to one. The server refuses to start when it is empty. See [Project Scope](#project-scope-fork-addition).
 
 Example:
 

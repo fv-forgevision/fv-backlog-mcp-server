@@ -22,8 +22,32 @@ Pass a comma-separated list of project keys, by environment variable or CLI flag
 | CLI flag | `--allowed-projects "PBL,INFRA"` |
 
 - Case-insensitive; keys are normalized to upper case internally.
-- Unset or empty means no restriction — identical to upstream.
+- **Required. The server refuses to start when it is unset, empty, or nothing but separators** (see below).
 - These are project *keys*, not names or ids (the `PBL` in `PBL-123`).
+
+### No allow-list means no server (fail-closed)
+
+Without an allow-list the server writes an error to stderr and **exits with status 1**. There is no "whole space" mode.
+
+```
+FATAL: no allowed projects configured.
+This server refuses to start without an explicit project allow-list, because an
+unset list would expose every project the credential can reach.
+Set BACKLOG_ALLOWED_PROJECTS="PROJ1,PROJ2" or pass --allowed-projects PROJ1,PROJ2.
+```
+
+A missing setting silently granting access to every project is the exact accident this fork exists to prevent, so a missing setting is a startup failure rather than an unrestricted server.
+
+All of these count as unset:
+
+| Value | Result |
+|---|---|
+| variable absent | refuses to start |
+| `BACKLOG_ALLOWED_PROJECTS=` | refuses to start |
+| `BACKLOG_ALLOWED_PROJECTS="  "` | refuses to start |
+| `BACKLOG_ALLOWED_PROJECTS=" , , "` | refuses to start |
+
+The one exception is `--export-translations`, which reads no Backlog data and therefore runs without an allow-list.
 
 ```json
 {
