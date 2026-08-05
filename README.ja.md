@@ -27,22 +27,134 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
 
 ### 必要条件
 
-- Docker
-- APIアクセスが可能なBacklogアカウント
-- BacklogアカウントのAPIキー
+- Node.js 22 以上（オプション1・2の場合）、または Docker（オプション3の場合）
+- APIアクセスが可能なBacklogアカウントと、そのAPIキー
+- このサーバーに操作させるプロジェクトのキー（`BACKLOG_ALLOWED_PROJECTS` の指定は必須です）
 
-### オプション1: Docker経由でのインストール
+### APIキーの受け渡し（全オプション共通）
 
-このMCPサーバーを使用する最も簡単な方法は、MCP設定を利用することです：
+APIキーは設定ファイルに直接書かず、シェルの環境変数を参照させることを推奨します。`.mcp.json` はプロジェクトのリポジトリにコミットしてチームで共有できるファイルなので、キーを書き込むとそのまま流出につながります。
 
-1. MCP設定を開きます
-2. MCP設定セクションに移動します
-3. 次の設定を追加します：
+1. シェルの設定ファイル（`~/.bashrc`、zshなら `~/.zshrc`）にAPIキーを定義します：
+
+```bash
+export BACKLOG_API_KEY='実際のAPIキー'
+```
+
+2. 現在のシェルに反映します：
+
+```bash
+source ~/.bashrc
+```
+
+以降の設定例では、この変数を `"BACKLOG_API_KEY": "${BACKLOG_API_KEY}"` として参照します。
+
+> **注意点:**
+>
+> - `${VAR}` の展開は **Claude Code の機能**です（`command` / `args` / `env` / `url` / `headers` で利用できます）。`${BACKLOG_API_KEY:-デフォルト値}` の形式でフォールバックも指定できます。Claude Desktop など他のMCPクライアントでは展開されず、`${BACKLOG_API_KEY}` という文字列がそのままAPIキーとして渡されるため、そちらでは値を直接記述してください。
+> - 変数が未設定でもエラーにはならず、未展開のまま渡されてBacklogの認証エラーになります。`claude mcp list` に未設定の警告が出るので確認してください。
+> - `~/.bashrc` は対話シェルの起動時に読み込まれます。`claude` はターミナルから起動してください（ランチャー経由の起動ではシェル設定が読み込まれず、変数が見つからない場合があります）。
+
+### オプション1: npx経由でのインストール（推奨）
+
+リポジトリをクローンせずに `npx` でサーバーを直接実行します。インストール作業が不要で、最も手軽な方法です。
+
+1. プロジェクトのルートに `.mcp.json` を作成します：
+2. BACKLOG_ALLOWED_PROJECTSにアクセスするプロジェクトIDを設定してください。
+    https://forge.backlog.jp/projects/(プロジェクトID)
 
 ```json
 {
   "mcpServers": {
     "backlog": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
+      "env": {
+        "BACKLOG_DOMAIN": "your-domain.backlog.com",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
+      }
+    }
+  }
+}
+```
+
+`your-domain.backlog.com` を実際のBacklogドメインに、`PBL,INFRA` をこのサーバーに操作させるプロジェクトキーに置き換えてください。
+
+2. そのディレクトリで `claude` を起動します：
+
+```bash
+claude
+```
+
+`.mcp.json` に書かれたサーバーはプロジェクトスコープとして扱われるため、初回起動時に承認を求められます。承認するまでサーバーは接続されません。
+
+3. 接続を確認します：
+
+```bash
+claude mcp list
+```
+
+`✔ Connected` と表示されれば完了です。`⏸ Pending approval` と表示される場合は、手順2の承認がまだ済んでいません。
+
+### オプション2: 手動セットアップ (Node.js)
+
+npmパッケージを使わず、リポジトリをクローンしてローカルでビルドする方法です。フォーク自体に手を入れる場合はこちらを使います。
+
+1. クローンしてビルドします：
+
+```bash
+git clone https://github.com/fv-forgevision/fv-backlog-mcp-server.git
+cd fv-backlog-mcp-server
+pnpm install
+pnpm run build
+```
+
+2. 利用したいプロジェクトのルートに `.mcp.json` を作成し、ビルドした `build/index.js` を指定します：
+
+```json
+{
+  "mcpServers": {
+    "backlog": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/fv-backlog-mcp-server/build/index.js"],
+      "env": {
+        "BACKLOG_DOMAIN": "your-domain.backlog.com",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
+        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
+      }
+    }
+  }
+}
+```
+
+`/path/to/fv-backlog-mcp-server` はクローンしたディレクトリの絶対パスに置き換えてください。
+
+3. オプション1と同様に `claude` を起動して承認し、`claude mcp list` で接続を確認します。
+
+なお、サーバー単体を開発用に動かす場合は `.env` を使う方法もあります：
+
+```bash
+cp .env.example .env
+# .env に BACKLOG_DOMAIN / BACKLOG_API_KEY / BACKLOG_ALLOWED_PROJECTS を設定
+pnpm run dev
+```
+
+### オプション3: Docker経由でのインストール
+
+Node.js を用意せずにコンテナで実行する方法です。
+
+> **注意:** イメージ `ghcr.io/fv-forgevision/fv-backlog-mcp-server` は、リリースワークフローを実行するまで公開されません。現時点では利用できないため、オプション1または2を使用してください（[docs/publishing.ja.md](docs/publishing.ja.md) 参照）。
+
+1. プロジェクトのルートに `.mcp.json` を作成します：
+
+```json
+{
+  "mcpServers": {
+    "backlog": {
+      "type": "stdio",
       "command": "docker",
       "args": [
         "run",
@@ -60,7 +172,7 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
         "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
@@ -68,84 +180,14 @@ Backlog API とやり取りするための Model Context Protocol（MCP）サー
 }
 ```
 
-`your-domain.backlog.com` を実際のBacklogドメインに、`your-api-key` を実際のBacklog APIキーに置き換えてください。
+`args` の `-e` は、`env` で指定した値をコンテナ内へ引き渡すための指定です。環境変数を追加する場合は `-e` の行も合わせて追加してください。
+
+2. オプション1と同様に `claude` を起動して承認し、`claude mcp list` で接続を確認します。
 
 ✅ `--pull always` を使用できない場合は、次のコマンドで手動でイメージを更新できます：
 
 ```
 docker pull ghcr.io/fv-forgevision/fv-backlog-mcp-server:latest
-```
-
-### オプション2: npx経由でのインストール
-
-リポジトリをクローンせずに `npx` を使用してサーバーを直接実行することもできます。これは、完全なインストールなしでサーバーを実行する便利な方法です。
-
-1. MCP設定を開きます
-2. MCP設定セクションに移動します
-3. 次の設定を追加します：
-
-```json
-{
-  "mcpServers": {
-    "backlog": {
-      "command": "npx",
-      "args": ["@fyosimi/fv-backlog-mcp-server"],
-      "env": {
-        "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
-        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
-      }
-    }
-  }
-}
-```
-
-`your-domain.backlog.com` を実際のBacklogドメインに、`your-api-key` を実際のBacklog APIキーに置き換えてください。
-
-### オプション3: 手動セットアップ (Node.js)
-
-1. クローンしてインストール：
-
-   ```bash
-   git clone https://github.com/fv-forgevision/fv-backlog-mcp-server.git
-   cd fv-backlog-mcp-server
-   pnpm install
-   pnpm run build
-   ```
-
-2. テンプレートから `.env` を作成し、必須の環境変数を設定します：
-
-```bash
-cp .env.example .env
-```
-
-`.env` に以下を設定してください：
-
-- `BACKLOG_DOMAIN=your-domain.backlog.com`
-- `BACKLOG_API_KEY=your-api-key`
-
-3. ローカルで起動します：
-
-```bash
-pnpm run dev
-```
-
-4. MCPとして使用するJSONを設定します：
-
-```json
-{
-  "mcpServers": {
-    "backlog": {
-      "command": "node",
-      "args": ["your-repository-location/build/index.js"],
-      "env": {
-        "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
-        "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
-      }
-    }
-  }
-}
 ```
 
 ### OAuth 2.0 認証（リモートMCP）
@@ -212,11 +254,12 @@ MCP認可仕様に対応するMCPクライアントは、これらのエンド�
 {
   "mcpServers": {
     "backlog": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@fyosimi/fv-backlog-mcp-server"],
       "env": {
         "BACKLOG_DOMAIN": "your-space.backlog.jp",
-        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
         "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
@@ -388,7 +431,7 @@ PROJECT-KEYプロジェクトの「repo-name」リポジトリで、ブランチ
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
         "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA"
       }
     }
@@ -444,7 +487,7 @@ npx github:fv-forgevision/fv-backlog-mcp-server --export-translations
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
         "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "BACKLOG_MCP_TOOL_ADD_ISSUE_COMMENT_DESCRIPTION": "代替の説明文"
       }
@@ -556,7 +599,7 @@ MAX_TOKENS=10000
       ],
       "env": {
         "BACKLOG_DOMAIN": "your-domain.backlog.com",
-        "BACKLOG_API_KEY": "your-api-key",
+        "BACKLOG_API_KEY": "${BACKLOG_API_KEY}",
         "BACKLOG_ALLOWED_PROJECTS": "PBL,INFRA",
         "MAX_TOKENS": "10000",
         "OPTIMIZE_RESPONSE": "1",
